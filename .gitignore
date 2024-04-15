@@ -7,3 +7,6 @@ create_tfrecords/dataset/
 create_tfrecords/dataset_modified/
 create_tfrecords/dataset_old/
 __pycache__/
+dataset/1_r3d.tfrecords
+dataset/2_r3d.tfrecords
+dataset/newyork_train.tfrecords
