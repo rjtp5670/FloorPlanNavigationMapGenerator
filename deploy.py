@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname('/home/david/SIMPLE_DFPN/utils'))))
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname('/home/david/david_ws/FloorPlanNavigationMapGenerator/utils'))))
 import tensorflow as tf
 from utils.settings import overwrite_args_with_toml
 from utils.util import fill_break_line, flood_fill, refine_room_region
@@ -219,7 +219,7 @@ def main(config: argparse.Namespace) -> np.ndarray:
     return result
 
 # Commented out IPython magic to ensure Python compatibility.
-# %cd /home/david/SIMPLE_DFPN/
+# %cd /home/david/david_ws/FloorPlanNavigationMapGenerator/
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -244,7 +244,7 @@ def deploy_plot_res(result: np.ndarray): # 음.. 이거 굳이 필요한가?
 
     # 여백을 최소화
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
-    file_path = "/home/david/SIMPLE_DFPN/resources/output.png"
+    file_path = "/home/david/david_ws/FloorPlanNavigationMapGenerator/resources/output.png"
     plt.savefig(file_path, dpi=dpi, bbox_inches='tight', pad_inches=0)
 
 from easydict import EasyDict
@@ -252,7 +252,7 @@ from easydict import EasyDict
 def parse_args(args: List[str]) -> EasyDict:
     args_dict = EasyDict()
     args_dict.tfmodel = "subclass"
-    args_dict.image = "/home/david/SIMPLE_DFPN/resources/floorplan_resized_noised3.png"
+    args_dict.image = "/home/david/david_ws/FloorPlanNavigationMapGenerator/resources/floorplan_resized_noised3.png"
     args_dict.weight = "log/store/G"
     args_dict.postprocess = True
     args_dict.colorize = True

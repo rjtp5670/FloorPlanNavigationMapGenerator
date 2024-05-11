@@ -13,8 +13,26 @@ from data import convert_one_hot_to_image, decodeAllRaw, loadDataset, preprocess
 from net import deepfloorplanModel
 from loss import balanced_entropy, cross_two_tasks_weight
 
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname('/home/david/SIMPLE_DFPN/utils'))))
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname('/home/david/david_ws/FloorPlanNavigationMapGenerator/utils'))))
 from utils.settings import overwrite_args_with_toml
+
+os.environ['TF_GPU_ALLOCATOR'] = 'cuda_malloc_async'
+gpus = tf.config.experimental.list_physical_devices('GPU')
+
+if gpus:
+    try:
+        # 현재 프로그램이 필요할 때만 메모리를 할당하도록 설정
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        # 프로그램 시작 후에 GPU 설정을 변경할 수 없을 때 발생
+        print(e)
+# mixed_precision 모듈에서 set_global_policy 함수를 임포트합니다
+
+from tensorflow.keras.mixed_precision import set_global_policy
+
+### 전역 정책으로 'mixed_float16'을 사용하도록 설정합니다
+# set_global_policy('mixed_float16')
 
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
@@ -100,70 +118,6 @@ def train_step(
     optim.apply_gradients(zip(grads, model.trainable_weights))
     return logits_cw, logits_r, loss, loss1, loss2
 
-# import seaborn as sns
-
-# def plot_confusion_matrix(hist, class_names):
-
-#     pass
-#     # plt.figure(figsize=(10,8))
-
-#     # sns.heatmap(hist, annot=True, fmt='.2f', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
-
-#     # plt.ylabel("True label")
-#     # plt.xlabel("Predict Label")
-#     # plt.title("Confustion Matrix")
-#     # plt.show()
-
-# def fast_hist(im, gt, n=4): # background, Free, wall, free, opening, wall line
-#     """
-#     n is num_of_classes
-#     """
-#     k = (gt >= 0) & (gt < n)
-#     return np.bincount(n * gt[k].astype(int) + im[k], minlength=n**2).reshape(n, n)
-
-# def eval_acc(boundary, room, logits_cw, logits_r, epoch, comp_epochs):
-#     boundary_class_names = ("Back Ground", "Opening", "Wall")
-#     room_class_names = ("Back Ground", "Free")
-
-#     # hist = np.zeros((num_of_classes, num_of_classes))
-#     bound_num_of_class = 3
-#     bound_num_of_room = 4
-
-#     # Confusion Matrix Place Holder
-#     hist_bound = np.zeros((bound_num_of_class, bound_num_of_class))
-#     hist_room = np.zeros((bound_num_of_room, bound_num_of_room))
-
-#     # Convert logits to discrete values (e.g., using argmax)
-#     predicted_cw = tf.argmax(logits_cw, axis=-1)
-#     predicted_r = tf.argmax(logits_r, axis=-1)
-
-#     # Flatten and calculate histogram
-#     bound_flat = tf.reshape(boundary, [-1])
-#     room_flat = tf.reshape(room, [-1])
-
-#     predicted_cw_flat = tf.reshape(predicted_cw, [-1])
-#     predicted_r_flat = tf.reshape(predicted_r, [-1])
-
-#     hist_bound += fast_hist(predicted_cw_flat.numpy(), bound_flat.numpy(), bound_num_of_class)
-#     hist_room  += fast_hist(predicted_r_flat.numpy(), room_flat.numpy(), bound_num_of_room)
-
-#     overall_acc_bound = np.diag(hist_bound).sum() / hist_bound.sum()
-#     mean_acc_bound = np.nanmean(np.diag(hist_bound) / (np.sum(hist_bound, axis=1) + 1e-6))
-
-#     overall_acc_room = np.diag(hist_room).sum() / hist_room.sum()
-#     mean_acc_room = np.nanmean(np.diag(hist_room) / (np.sum(hist_room, axis=1) + 1e-6))
-
-#     overall_acc = [overall_acc_bound, overall_acc_room]
-#     mean_acc = [mean_acc_bound, mean_acc_room]
-
-#     if epoch == (comp_epochs - 1) :
-#       plot_confusion_matrix(hist_bound, boundary_class_names)
-#       plot_confusion_matrix(hist_room, room_class_names)
-
-#     return overall_acc, mean_acc
-
-# Evaluate IoU
-
 from tensorflow.keras.metrics import MeanIoU
 
 def create_overlay(true_mask, pred_mask) -> tf.Tensor:
@@ -200,75 +154,13 @@ def eval_iou(logits, gt, num_of_class):
 
   return mean_iou_result, overlay
 
-# def image_grid_overlays(
-#     img: tf.Tensor,
-#     overlay_cw: tf.Tensor,
-#     overlay_r: tf.Tensor,
-#     logits_r: tf.Tensor,
-#     logits_cw: tf.Tensor,
-# ) -> matplotlib.figure.Figure:
-#     figure = plt.figure()
-#     plt.subplot(2, 3, 1)
-#     plt.imshow(img[0].numpy())
-#     plt.xticks([])
-#     plt.yticks([])
-#     plt.grid(False)
-#     plt.subplot(2, 3, 2)
-#     plt.imshow(overlay_cw[0].numpy())
-#     plt.xticks([])
-#     plt.yticks([])
-#     plt.grid(False)
-#     plt.subplot(2, 3, 3)
-#     plt.imshow(overlay_r[0].numpy())
-#     plt.xticks([])
-#     plt.yticks([])
-#     plt.grid(False)
-#     plt.subplot(2, 3, 5)
-#     plt.imshow(convert_one_hot_to_image(logits_cw)[0].numpy().squeeze())
-#     plt.xticks([])
-#     plt.yticks([])
-#     plt.grid(False)
-#     plt.subplot(2, 3, 6)
-#     plt.imshow(convert_one_hot_to_image(logits_r)[0].numpy().squeeze())
-#     plt.xticks([])
-#     plt.yticks([])
-#     plt.grid(False)
-#     return figure
-
-# def checkpoints(epoch, optim, model):
-#   checkpoint = tf.train.Checkpoint(epoch=tf.Variable(0), optimizer=optim, model=model)
-#   manager = tf.train.CheckpointManager(checkpoint, directory='./checkpoints', max_to_keep=5)
-#   checkpoint.epoch.assign_add(1)
-#   save_path = manager.save()
-#   print("Saved checkpoint for epoch {}: {}".format(int(checkpoint.epoch), save_path))
-
-#   if manager.latest_checkpoint:
-#     checkpoint.restore(manager.latest_checkpoint)
-#     print("Restored from {}".format(manager.latest_checkpoint))
-#   else:
-#     print("Initializing from scratch")
-
-#   return int(checkpoint.epoch)
-
-#   # for epoch in range(int(checkpoint.epoch), config.epochs)
-
 def main(config: argparse.Namespace):
     # initialization
     writer = tf.summary.create_file_writer(config.logdir)
     pltiter = 0
     dataset, model, optim = init(config)
     # model.compile(optim)
-
-    # # training loop
-    # checkpoint = tf.train.Checkpoint(epoch=tf.Variable(0), optimizer=optim, model=model)
-    # manager = tf.train.CheckpointManager(checkpoint, directory='/home/david/SIMPLE_DFPN/checkpoints/', max_to_keep=5)
-    # if manager.latest_checkpoint:
-    #   checkpoint.restore(manager.latest_checkpoint)
-    #   # checkpoint.restore('/home/david/SIMPLE_DFPN/checkpoints/ckpt-19')
-    #   print("Restored from {}".format(manager.latest_checkpoint))
-    # else:
-    #   print("Initializing from scratch.")
-    #   print("[Info] checkpoint.epoch", int(checkpoint.epoch))
+    model.summary()
     for epoch in range(config.epochs):
         print("[INFO] Epoch {}".format(epoch))
         for data in tqdm(list(dataset.shuffle(400).batch(config.batchsize))):
@@ -302,9 +194,6 @@ def main(config: argparse.Namespace):
                     tf.summary.image("overlay_r", overlay_r, step=pltiter)
                 writer.flush()
             pltiter += 1
-        # checkpoint.epoch.assign_add(1)
-        # save_path = manager.save()
-        # print("Saved checkpoint for epoch {}: {}".format(int(checkpoint.epoch), save_path))
         print(f"Mean IoU CW: {m_iou_cw}", f"Mean IoU Room: {m_iou_r}")
 
         # save model
@@ -321,7 +210,7 @@ def parse_args(args: List[str]) -> EasyDict:
     args_dict.batchsize = 2
     args_dict.lr = 1e-4
     args_dict.wd = 1e-5
-    args_dict.epochs = 100
+    args_dict.epochs = 1
     args_dict.logdir = "log/store"
     args_dict.modeldir = "model/store"
     args_dict.weight = None
@@ -339,7 +228,6 @@ def parse_args(args: List[str]) -> EasyDict:
     ]
     return args_dict
 
-# %cd /content/drive/MyDrive/Colab Notebooks/Deep Floor Plan Recognition/
 if __name__ == "__main__":
   args = parse_args(sys.argv[1:])
   args = overwrite_args_with_toml(args)
@@ -352,14 +240,11 @@ from PIL import Image
 import numpy as np
 from tensorflow.keras.optimizers import Adam
 
-# %cd /home/david/SIMPLE_DFPN/
 # 이미지 로드 및 전처리
-image_path = '/home/david/SIMPLE_DFPN/resources/[TEST].png'  # 실제 이미지 경로로 바꾸세요
+image_path = '/home/david/david_ws/FloorPlanNavigationMapGenerator/resources/[TEST].png'  # 실제 이미지 경로로 바꾸세요
 image = Image.open(image_path)
 image = image.resize((512, 512))  # 모델에 맞는 이미지 크기로 조정
 image = np.array(image)  # 이미지를 넘파이 배열로 변환
-
-# plt.imshow(image)
 
 # 이미지의 채널 차원 확인
 if image.shape[-1] == 4:
@@ -383,7 +268,9 @@ optimizer = Adam(learning_rate=0.001)  # 원하는 옵티마이저와 학습률�
 loss = 'sparse_categorical_crossentropy'  # 원하는 손실 함수를 지정하세요.
 metrics = ['accuracy']  # 원하는 평가 메트릭을 지정하세요.
 
-loaded_model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+# loaded_model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+loaded_model.compile(optimizer='adam', loss={'cw': 'binary_crossentropy', 'r': 'sparse_categorical_crossentropy'},
+              loss_weights={'cw': 1.0, 'r': 1.0})
 
 # 모델 평가
 result = loaded_model.predict(image)
@@ -397,16 +284,6 @@ print(np.squeeze(result[1], axis=0).shape)
 
 plt.imshow(np.squeeze(result[0][:,:,:], axis=0)[:][:][:,:,])
 
-# Commented out IPython magic to ensure Python compatibility.
-# %unload_ext tensorboard
-
-# Commented out IPython magic to ensure Python compatibility.
 from tensorboard import notebook
-# %load_ext tensorboard
-# %tensorboard --logdir=log/store
 
 notebook.display(port=6009)
-
-# Commented out IPython magic to ensure Python compatibility.
-# %reload_ext tensorboard
-

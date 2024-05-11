@@ -1,5 +1,5 @@
 # Commented out IPython magic to ensure Python compatibility.
-# %cd /home/david/SIMPLE_DFPN/
+# %cd /home/david/david_ws/FloorPlanNavigationMapGenerator/
 
 from typing import Dict, Tuple
 
@@ -47,7 +47,7 @@ def preprocess(
     hot_r = tf.one_hot(room, 4, axis=-1)
     return img, bound, room, hot_b, hot_r
 
-record_path = "/home/david/SIMPLE_DFPN/dataset/"
+record_path = "/home/david/david_ws/FloorPlanNavigationMapGenerator/dataset/"
 
 def loadDataset(size: int = 512) -> tf.data.Dataset:
     raw_dataset = tf.data.TFRecordDataset(record_path + "2_r3d.tfrecords")
