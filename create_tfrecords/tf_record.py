@@ -1,4 +1,13 @@
+import tensorflow as tf
 import numpy as np
+import cv2
+import os
+import sys
+import glob
+import time
+
+from matplotlib import pyplot as plt
+from imageio import imread
 
 # use for index 2 rgb
 floorplan_room_map = {
@@ -25,7 +34,6 @@ floorplan_boundary_map_figure = {
 # merge all label into one multi-class label
 floorplan_fuse_map = {
 	0: [  0,  0,  0], # background
-	1: [203, 203, 203], # Free
 	2: [224,224,224], # not used
 	3: [224,224,128], # not used
 	9: [255,60,128],  # extra label for opening (door&window)
@@ -42,13 +50,13 @@ floorplan_fuse_map_figure = {
 	10: [ 0, 0,  0]  # extra label for wall line
 }
 
+def rgb2ind(im, color_map=floorplan_room_map): # rgb2ind 함수는 이미지와 맵핑된 컬러맵을 전달 받음
+	ind = np.zeros((im.shape[0], im.shape[1])) # 이미지와 동일한 shape의 행렬 생성
 
-def rgb2ind(im, color_map=floorplan_room_map): 
-	ind = np.zeros((im.shape[0], im.shape[1])) 
+	for i, rgb in color_map.items(): # 맵핑된 컬러맵을 반복하여 index 값을 찾아냄
+		ind[(im==rgb).all(2)] = i # 이미지와 맵핑된 rgb 값이 2번째 축 [.all(2)]을 기준으로 정확히 일치하면 index 지정
 
-	for i, rgb in color_map.items(): 
-		ind[(im==rgb).all(2)] = i 
-
+	# return ind.astype(int) # int => int64
 	return ind.astype(np.uint8) # force to uint8
 
 def ind2rgb(ind_im, color_map=floorplan_room_map):
@@ -59,26 +67,6 @@ def ind2rgb(ind_im, color_map=floorplan_room_map):
 
 	return rgb_im
 
-def unscale_imsave(path, im, cmin=0, cmax=255):
-	toimage(im, cmin=cmin, cmax=cmax).save(path)
-
-import numpy as np
-
-import tensorflow as tf
-
-from imageio import imread
-import cv2
-import numpy as np
-
-from matplotlib import pyplot as plt
-
-import os
-import sys
-import glob
-import time
-
-applied_size = 256
-
 def load_raw_images(path):
   paths = path.split('\t')
   image = imread(paths[0], mode='RGB')
@@ -88,11 +76,11 @@ def load_raw_images(path):
   close_wall = imread(paths[4], mode='L')
 
   # NOTE: imresize will rescale the image to range [0, 255], also cast data into uint8 or uint32
-  image = imresize(image, (applied_size, applied_size, 3))
-  wall = imresize(wall, (applied_size, applied_size))
-  close = imresize(close, (applied_size, applied_size))
-  close_wall = imresize(close_wall, (applied_size, applied_size))
-  room = imresize(room, (applied_size, applied_size, 3))
+  image = imresize(image, (512, 512, 3))
+  wall = imresize(wall, (512, 512))
+  close = imresize(close, (512, 512))
+  close_wall = imresize(close_wall, (512, 512))
+  room = imresize(room, (512, 512, 3))
 
   room_ind = rgb2ind(room)
 
@@ -134,7 +122,7 @@ def write_record(paths, name='dataset.tfrecords'):
       # Serialize to string and write on the file
       writer.write(example.SerializeToString())
 
-def read_record(data_path, batch_size=1, size=applied_size):
+def read_record(data_path, batch_size=1, size=512):
 	feature = {'image': tf.FixedLenFeature(shape=(), dtype=tf.string),
 				'wall': tf.FixedLenFeature(shape=(), dtype=tf.string),
 				'close': tf.FixedLenFeature(shape=(), dtype=tf.string),
@@ -172,9 +160,7 @@ def read_record(data_path, batch_size=1, size=applied_size):
 	room = tf.reshape(room, [size, size])
 	close_wall = tf.reshape(close_wall, [size, size, 1])
 
-
 	# Any preprocessing here ...
-	# normalize
 	image = tf.divide(image, tf.constant(255.0))
 	wall = tf.divide(wall, tf.constant(255.0))
 	close = tf.divide(close, tf.constant(255.0))
@@ -204,10 +190,10 @@ def load_seg_raw_images(path):
 	close_wall = imread(paths[4], mode='L')
 
 	# NOTE: imresize will rescale the image to range [0, 255], also cast data into uint8 or uint32
-	image = imresize(image, (applied_size, applied_size, 3))
-	close = imresize(close, (applied_size, applied_size)) / 255
-	close_wall = imresize(close_wall, (applied_size, applied_size)) / 255
-	room = imresize(room, (applied_size, applied_size, 3))
+	image = imresize(image, (512, 512, 3))
+	close = imresize(close, (512, 512)) / 255
+	close_wall = imresize(close_wall, (512, 512)) / 255
+	room = imresize(room, (512, 512, 3))
 
 	room_ind = rgb2ind(room)
 
@@ -242,7 +228,7 @@ def write_seg_record(paths, name='dataset.tfrecords'):
 
 	writer.close()
 
-def read_seg_record(data_path, batch_size=1, size=applied_size):
+def read_seg_record(data_path, batch_size=1, size=512):
 	feature = {'image': tf.FixedLenFeature(shape=(), dtype=tf.string),
 				'label': tf.FixedLenFeature(shape=(), dtype=tf.string)}
 
@@ -294,7 +280,7 @@ def load_bd_rm_images(path):
     close_wall = np.array(Image.open(paths[4]).convert('L'))
 
     # Resize the images
-    new_size = (applied_size, applied_size)
+    new_size = (256, 256)
 
     image = np.array(Image.fromarray(image).resize(new_size))
     close = np.array(Image.fromarray(close).resize(new_size)) / 255.0
@@ -324,7 +310,7 @@ def write_bd_rm_record(paths, name='dataset.tfrecords'):
     # len(paths) = 11 개 Line으로 구분 됨
     for i in range(len(paths)):
       # Load the image
-      image, cw_ind, room_ind, d_ind = load_bd_rm_images(paths[i])
+      image, cw_ind, room_ind, d_ind = load_bd_rm_images(paths[i]) # 원본 이미지, Close Wall, Room, Door
 
       #Create a feature
       feature = {'image': _bytes_feature(image.tobytes()),
@@ -337,54 +323,3 @@ def write_bd_rm_record(paths, name='dataset.tfrecords'):
 
       # Serialize to string and write on the file
       writer.write(example.SerializeToString())
-
-def read_bd_rm_record(data_path, batch_size=1, size=applied_size):
-	feature = {'image': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-				'boundary': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-				'room': tf.io.FixedLenFeature(shape=(), dtype=tf.string),
-				'door': tf.io.FixedLenFeature(shape=(), dtype=tf.string)}
-
-	# Create a list of filenames and pass it to a queue
-	filename_queue = tf.compat.v1.train.string_input_producer([data_path], num_epochs=None, shuffle=False, capacity=batch_size*128)
-
-	# Define a reader and read the next record
-	reader = tf.TFRecordReader()
-	_, serialized_example = reader.read(filename_queue)
-
-	# Decode the record read by the reader
-	features = tf.parse_single_example(serialized_example, features=feature)
-
-	# Convert the image data from string back to the numbers
-	image = tf.decode_raw(features['image'], tf.uint8)
-	boundary = tf.decode_raw(features['boundary'], tf.uint8)
-	room = tf.decode_raw(features['room'], tf.uint8)
-	door = tf.decode_raw(features['door'], tf.uint8)
-
-	# Cast data
-	image = tf.cast(image, dtype=tf.float32)
-
-	# Reshape image data into the original shape
-	image = tf.reshape(image, [size, size, 3])
-	boundary = tf.reshape(boundary, [size, size])
-	room = tf.reshape(room, [size, size])
-	door = tf.reshape(door, [size, size])
-
-	# Any preprocessing here ...
-	# normalize
-	image = tf.divide(image, tf.constant(255.0))
-
-	# Genereate one hot room label
-	label_boundary = tf.one_hot(boundary, 3, axis=-1)
-	label_room = tf.one_hot(room, 9, axis=-1)
-
-	# Creates batches by randomly shuffling tensors
-	images, label_boundaries, label_rooms, label_doors = tf.train.shuffle_batch([image, label_boundary, label_room, door],
-						batch_size=batch_size, capacity=batch_size*128, num_threads=1, min_after_dequeue=batch_size*32)
-
-	# images, walls = tf.train.shuffle_batch([image, wall],
-						# batch_size=batch_size, capacity=batch_size*128, num_threads=1, min_after_dequeue=batch_size*32)
-
-	return {'images': images, 'label_boundaries': label_boundaries, 'label_rooms': label_rooms, 'label_doors': label_doors}
-
-
-

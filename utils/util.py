@@ -3,7 +3,6 @@ import numpy as np
 import tensorflow as tf
 from scipy import ndimage
 
-
 def fast_hist(im: np.ndarray, gt: np.ndarray, n: int = 9) -> np.ndarray:
     """
     n is num_of_classes
@@ -12,7 +11,6 @@ def fast_hist(im: np.ndarray, gt: np.ndarray, n: int = 9) -> np.ndarray:
     return np.bincount(
         n * gt[k].astype(int) + im[k], minlength=n**2
     ).reshape(n, n)
-
 
 def flood_fill(test_array: np.ndarray, h_max: int = 255) -> np.ndarray:
     """
@@ -65,7 +63,6 @@ def fill_break_line(cw_mask: np.ndarray) -> np.ndarray:
     cw_mask = cv2.morphologyEx(cw_mask, cv2.MORPH_CLOSE, broken_line_v2)
 
     return cw_mask
-
 
 def refine_room_region(cw_mask: np.ndarray, rm_ind: np.ndarray) -> np.ndarray:
     label_rm, num_label = ndimage.label((1 - cw_mask))

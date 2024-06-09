@@ -2,50 +2,42 @@ import argparse
 import gc
 import os
 import sys
-from typing import List, Tuple
-
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname('/home/david/david_ws/FloorPlanNavigationMapGenerator/utils'))))
-import tensorflow as tf
 from utils.settings import overwrite_args_with_toml
 from utils.util import fill_break_line, flood_fill, refine_room_region
-
-from data import convert_one_hot_to_image, decodeAllRaw, loadDataset, preprocess
+from typing import List, Tuple
+from easydict import EasyDict
+from data import convert_one_hot_to_image
 from net import deepfloorplanModel
 
+
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname('/home/david/david_ws/FloorPlanNavigationMapGenerator/utils'))))
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+
+applied_size = 256
 
 def init(
     config: argparse.Namespace,
 ) -> Tuple[tf.keras.Model, tf.Tensor, np.ndarray]:
-    # if config.tfmodel == "subclass":
-    model = deepfloorplanModel(config=config)
-    # elif config.tfmodel == "func":
-    #     model = deepfloorplanFunc(config=config)
+    
+    model, _ = deepfloorplanModel(config=config)
     if config.loadmethod == "log":
         model.load_weights(config.weight)
-    elif config.loadmethod == "pb":
-        model = tf.keras.models.load_model(config.weight)
-    elif config.loadmethod == "tflite":
-        model = tf.lite.Interpreter(model_path=config.weight)
-        model.allocate_tensors()
     img = mpimg.imread(config.image)[:, :, :3]
     shape = img.shape
     img = tf.convert_to_tensor(img, dtype=tf.uint8)
-    img = tf.image.resize(img, [512, 512])
+    img = tf.image.resize(img, [applied_size, applied_size])
     img = tf.cast(img, dtype=tf.float32)
-    img = tf.reshape(img, [-1, 512, 512, 3])
+    img = tf.reshape(img, [-1, applied_size, applied_size, 3])
+
     if tf.math.reduce_max(img) > 1.0:
         img /= 255
     if config.loadmethod == "tflite":
         return model, img, shape
-    # model.trainable = False
-    # if config.tfmodel == "subclass":
-
     return model, img, shape
 
 def predict(
@@ -128,8 +120,7 @@ import numpy as np
 floorplan_room_map = {
 	0: [0, 0, 0], # background
 	1: [255, 255, 255], # Free
-	# 2: [203,203,203], # not used
-	# 3: [203,203,203]  # not used
+
 }
 
 # boundary label
@@ -167,27 +158,6 @@ def colorize(r: np.ndarray, cw: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 def main(config: argparse.Namespace) -> np.ndarray:
     model, img, shape = init(config)
-    # if config.loadmethod == "tflite":
-    #     input_details = model.get_input_details()
-    #     output_details = model.get_output_details()
-    #     model.set_tensor(input_details[0]["index"], img)
-    #     model.invoke()
-    #     ri, cwi = 0, 1
-    #     if config.tfmodel == "func":
-    #         ri, cwi = 1, 0
-    #     logits_r = model.get_tensor(output_details[ri]["index"])
-    #     logits_cw = model.get_tensor(output_details[cwi]["index"])
-    #     logits_cw = tf.convert_to_tensor(logits_cw)
-    #     logits_r = tf.convert_to_tensor(logits_r)
-    # else:
-    #     if config.tfmodel == "func":
-    #         logits_cw, logits_cw = model.predict(img)
-    #     elif config.tfmodel == "subclass":
-    #         logits_cw, logits_r = model(img)
-    #         if config.loadmethod == "log":
-    #             logits_cw, logits_r = predict(model, img, shape)
-    #         elif config.loadmethod == "pb" or config.loadmethod == "none":
-    #             logits_r, logits_cw = model(img)
     logits_cw, logits_r = model(img)
     logits_cw = tf.image.resize(logits_cw, shape[:2])
     logits_r = tf.image.resize(logits_r, shape[:2])
@@ -211,27 +181,14 @@ def main(config: argparse.Namespace) -> np.ndarray:
         return newr.squeeze() + newcw
     newr_color, newcw_color = colorize(newr.squeeze(), newcw.squeeze())
     result = newr_color + newcw_color
-    # print(shape, result.shape)
 
     if config.save:
         mpimg.imsave(config.save, result.astype(np.uint8))
 
     return result
 
-# Commented out IPython magic to ensure Python compatibility.
-# %cd /home/david/david_ws/FloorPlanNavigationMapGenerator/
+def deploy_plot_res(result: np.ndarray): 
 
-import matplotlib.pyplot as plt
-import numpy as np
-
-def deploy_plot_res(result: np.ndarray): # 음.. 이거 굳이 필요한가?
-    # print(result.shape)
-    # plt.imshow(result)
-    # plt.xticks([])
-    # plt.yticks([])
-    # plt.grid(False)
-
-    # 거세야 아래가 수정한거다 24.04.03
     dpi = 100  # dots per inch, 해상도 설정
     height, width, _ = result.shape
     figsize = width / float(dpi), height / float(dpi)
@@ -242,31 +199,19 @@ def deploy_plot_res(result: np.ndarray): # 음.. 이거 굳이 필요한가?
     plt.yticks([])
     plt.grid(False)
 
-    # 여백을 최소화
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
     file_path = "/home/david/david_ws/FloorPlanNavigationMapGenerator/resources/output.png"
     plt.savefig(file_path, dpi=dpi, bbox_inches='tight', pad_inches=0)
 
-from easydict import EasyDict
-
 def parse_args(args: List[str]) -> EasyDict:
     args_dict = EasyDict()
     args_dict.tfmodel = "subclass"
-    args_dict.image = "/home/david/david_ws/FloorPlanNavigationMapGenerator/resources/floorplan_resized_noised3.png"
+    args_dict.image = "/resources/floorplan_resized_noised3.png"
     args_dict.weight = "log/store/G"
     args_dict.postprocess = True
     args_dict.colorize = True
     args_dict.loadmethod = "log"
     args_dict.save = None
-    args_dict.feature_channels = [256, 128, 64, 32]
-    args_dict.backbone = "vgg16"
-    args_dict.feature_names = [
-        "block1_pool",
-        "block2_pool",
-        "block3_pool",
-        "block4_pool",
-        "block5_pool",
-    ]
     args_dict.tomlfile = None
     return args_dict
 
@@ -276,6 +221,3 @@ if __name__ == "__main__":
     result = main(args)
     deploy_plot_res(result)
     plt.show()
-
-
-

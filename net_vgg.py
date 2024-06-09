@@ -6,23 +6,14 @@ import argparse
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     try:
-        # 현재 프로그램이 필요할 때만 메모리를 할당하도록 설정
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
     except RuntimeError as e:
-        # 프로그램 시작 후에 GPU 설정을 변경할 수 없을 때 발생
         print(e)
-# mixed_precision 모듈에서 set_global_policy 함수를 임포트합니다
 from tensorflow.keras.mixed_precision import set_global_policy
 
 # 전역 정책으로 'mixed_float16'을 사용하도록 설정합니다
 set_global_policy('mixed_float16')
-
-def data_loader_bd_rm_from_tfrecord(batch_size=1): # TF Record 형식의 데이터셋에서 배치 단위로 데이터를 로드하는 함수.
-	paths = open('/content/drive/MyDrive/Colab Notebooks/create_tfrecords/dataset/r3d_train_temp2.txt', 'r').read().splitlines()
-	loader_dict = read_bd_rm_record('/content/drive/MyDrive/Colab Notebooks/create_tfrecords/dataset/newyork_train.tfrecords', batch_size=batch_size, size=512)
-	num_batch = len(paths) // batch_size
-	return loader_dict, num_batch
 
 GPU_ID = '0'
 
@@ -105,13 +96,6 @@ def _constant_kernel(shape, value=1.0, diag=False, flip=False, regularizer=None,
   return k
 
 def _context_conv2d(tensor, dim=1, size=7, diag=False, flip=False, stride=1, name='cconv'):
-  """
-  Implement using identity matrix, combine neighbour pixels without bias, current only accept depth 1 of input tensor
-
-  Args:
-    diag: create diagnoal identity matrix
-    transpose: transpose the diagnoal matrix
-  """
   in_dim = tensor.shape.as_list()[-1] # suppose to be 1
   size = size if isinstance(size, (tuple, list)) else [size, size]
   stride = stride if isinstance(stride, (tuple, list)) else [1, stride, stride, 1]
@@ -122,11 +106,6 @@ def _context_conv2d(tensor, dim=1, size=7, diag=False, flip=False, stride=1, nam
   return out
 
 def _non_local_context(tensor1, tensor2, stride=4, name='non_local_context'): # Spatial Contextual Feature
-
-    """Use 1/stride image size of identity one rank kernel to combine context features, default is half image size, embedding between encoder and decoder part
-    Args:
-    stride: define the neighbour size
-    """
 
     assert tensor1.shape.as_list() == tensor2.shape.as_list(), "input tensor should have same shape"
 
@@ -249,8 +228,10 @@ def build_r_net(pools, cw):
 
   return [up16_cw, up16_r]
 
+applied_size = 256
+
 def deepfloorplanModel(config: argparse.Namespace = None, dtype=tf.float32):
-    input_shape=[512,512,3]
+    input_shape = [applied_size, applied_size, 3]
     inputs = layers.Input(shape=input_shape, name='input_layer')
 
     # Build Models
@@ -259,17 +240,13 @@ def deepfloorplanModel(config: argparse.Namespace = None, dtype=tf.float32):
     up16_cw, up16_r = build_r_net(pools, cw)
 
     # Compute Logits
-    logits_cw = _up_bilinear(up16_cw, dim=3, shape=(512,512), name='logits_cw')  # 3X3
-    logits_r = _up_bilinear(up16_r, dim=4, shape=(512,512), name='logits_r')
-    # logits_r = _up_bilinear(up16_r, dim=4, shape=(512,512), name='logits_r') # Free
+    logits_cw = _up_bilinear(up16_cw, dim=3, shape=(applied_size,applied_size), name='logits_cw')  # 3X3
+    logits_r = _up_bilinear(up16_r, dim=4, shape=(applied_size,applied_size), name='logits_r')
     logits = [logits_cw, logits_r]
 
     return Model(inputs=inputs, outputs=logits, name="DEEP_NET")
 
 # img = tf.random.uniform(shape=(1,512,512,3), minval=0, maxval=255, dtype=tf.float32)
 # model = deepfloorplanModel()
-# logits_cw, logits_r = model(img)
-# # logits = deepfloorplanModel(img)
-
-# # model.summary()
+# model.summary()
 

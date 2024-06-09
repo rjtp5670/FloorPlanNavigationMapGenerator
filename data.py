@@ -1,8 +1,4 @@
-# Commented out IPython magic to ensure Python compatibility.
-# %cd /home/david/david_ws/FloorPlanNavigationMapGenerator/
-
 from typing import Dict, Tuple
-
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
@@ -36,21 +32,23 @@ def decodeAllRaw(
     room = tf.io.decode_raw(x["room"], tf.uint8)
     return image, boundary, room
 
+applied_size = 256
+
 def preprocess(
-    img: tf.Tensor, bound: tf.Tensor, room: tf.Tensor, size: int = 512
+    img: tf.Tensor, bound: tf.Tensor, room: tf.Tensor, size: int = applied_size
 ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
     img = tf.cast(img, dtype=tf.float32)
     img = tf.reshape(img, [-1, size, size, 3]) / 255
     bound = tf.reshape(bound, [-1, size, size])
     room = tf.reshape(room, [-1, size, size])
     hot_b = tf.one_hot(bound, 3, axis=-1)
-    hot_r = tf.one_hot(room, 4, axis=-1)
+    hot_r = tf.one_hot(room, 2, axis=-1)
     return img, bound, room, hot_b, hot_r
 
 record_path = "/home/david/david_ws/FloorPlanNavigationMapGenerator/dataset/"
 
-def loadDataset(size: int = 512) -> tf.data.Dataset:
-    raw_dataset = tf.data.TFRecordDataset(record_path + "2_r3d.tfrecords")
+def loadDataset(size: int = applied_size) -> tf.data.Dataset:
+    raw_dataset = tf.data.TFRecordDataset(record_path + "2_240609_r3d.tfrecords")
     parsed_dataset = raw_dataset.map(_parse_function)
     return parsed_dataset
 
@@ -71,6 +69,6 @@ def main(dataset: tf.data.Dataset):
             plt.show()
             break
 
-if __name__ == "__main__":
-    dataset = loadDataset()
-    main(dataset)
+# if __name__ == "__main__":
+#     dataset = loadDataset()
+#     main(dataset)

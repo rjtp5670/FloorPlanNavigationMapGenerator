@@ -6,7 +6,6 @@ import numpy as np
 
 from .rgb_ind_convertor import floorplan_fuse_map
 
-
 def export_legend(
     legend: matplotlib.legend.Legend,
     filename: str = "legend.png",
@@ -19,14 +18,11 @@ def export_legend(
     bbox = bbox.transformed(fig.dpi_scale_trans.inverted())
     fig.savefig(filename, dpi="figure", bbox_inches=bbox)
 
-
 def norm255to1(x: List[int]) -> List[float]:
     return [p / 255 for p in x]
 
-
 def handle(m: str, c: List[float]):
     return plt.plot([], [], marker=m, color=c, ls="none")[0]
-
 
 def main():
     colors = [
