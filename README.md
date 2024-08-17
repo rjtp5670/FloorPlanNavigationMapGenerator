@@ -25,9 +25,11 @@ Model Architecture is as follows.
 3. Decoders. ConvB2 blocks are added to Room Type VGG decoder. 
 
     <img src="img/boundary_decoder1.png" alt="boundary decoder" width="400px">
+    
     > Boundary Decoder
 
     <img src="img/room_type_decoder2.png" alt="room type decoder" width="400px">
+    
     > Room Type Decoder
 
 Note: The architecture is designed by combining [ConvNeXt-V2](https://github.com/facebookresearch/ConvNeXt-V2/tree/main) and [_Deep Floor Plan Recognition using a Multi-task Network with Room-boundary-Guided Attention_](https://github.com/zlzeng/DeepFloorplan). The ConvNextV2 is originally coded in pythorch, but i challenged to  interprete masking and layers in my own way, and write the code in Python, so that it may differ from the what it was inteded. 
