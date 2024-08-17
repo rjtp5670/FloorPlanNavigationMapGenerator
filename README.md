@@ -6,16 +6,13 @@ The dataset is also downloaded from the zlzeng's github.
 
 ![](img/output.png)
 
-A deep learning-based approach to generating SLAM (Simultaneous Localization and Mapping) navigation maps for indoor autonomous mobile robots using building floor plans.  
+A deep learning-based approach to generate SLAM (Simultaneous Localization and Mapping) navigation maps for indoor autonomous mobile robots using building floor plans.  
 
 The model leverages one encoder and two decoders and generates a map from the floor plan, suitable for a mobile robot navigation. 
 
 ![](img/overall_model_structure.png)
 
-
 Model Architecture is as follows. 
-
-The architecture is designed by combining [ConvNeXt-V2](https://github.com/facebookresearch/ConvNeXt-V2/tree/main) and [_Deep Floor Plan Recognition using a Multi-task Network with Room-boundary-Guided Attention_](https://github.com/zlzeng/DeepFloorplan). The ConvNextV2 is originally coded in pythorch, but i challenged to  interprete masking and layers in my own way, and write the code in Python, so that it may differ from the what it was inteded. 
 
 1. Masks are applied to input images during a training to enhance generalization and stability. 
 
@@ -32,6 +29,9 @@ The architecture is designed by combining [ConvNeXt-V2](https://github.com/faceb
 
     ![](img/room_type_decoder2.png)
     > Room Type Decoder
+
+Note: The architecture is designed by combining [ConvNeXt-V2](https://github.com/facebookresearch/ConvNeXt-V2/tree/main) and [_Deep Floor Plan Recognition using a Multi-task Network with Room-boundary-Guided Attention_](https://github.com/zlzeng/DeepFloorplan). The ConvNextV2 is originally coded in pythorch, but i challenged to  interprete masking and layers in my own way, and write the code in Python, so that it may differ from the what it was inteded. 
+
 
 # Test Environment 
 
@@ -87,4 +87,6 @@ For the experiment, a virtual environment measuring 12.5m x 13m was created usin
 ![](img/test.png)
 
 ![](img/model_navigation.gif)
+
+
 
