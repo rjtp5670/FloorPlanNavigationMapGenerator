@@ -72,7 +72,7 @@ Additionally, the loss decreases steadily, indicating that the training is proce
 
 # Map Generation 
 
-![](img/output.png)
+<img src="img/output.png" alt="output" width="450px">
 
 The output of the model replicates the same occupied areas, gray areas, and free spaces as traditional SLAD navigation maps. Also, I overlayed two images, see below, with original and model output, and it results in the same resolition. 
 
